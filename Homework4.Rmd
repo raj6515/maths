@@ -1,0 +1,68 @@
+---
+title: "Homework 4"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE,message=FALSE,warning=FALSE,fig.width=8,fig.height=5)
+```
+
+## Problem 1
+
+```{r}
+set.seed(123)
+m<-1000;n<-10;B<-100;cnt_clt<-0;cnt_bs<-0
+for(i in 1:m){
+  x<-rchisq(n,5);xbar<-mean(x);s<-sd(x)
+  ci_clt<-c(xbar-1.96*s/sqrt(n),xbar+1.96*s/sqrt(n))
+  bs<-replicate(B,mean(sample(x,n,replace=TRUE)))
+  ci_bs<-quantile(bs,c(0.025,0.975))
+  if(5>=ci_clt[1]&5<=ci_clt[2])cnt_clt<-cnt_clt+1
+  if(5>=ci_bs[1]&5<=ci_bs[2])cnt_bs<-cnt_bs+1
+}
+c(CLT_coverage=cnt_clt/m,Bootstrap_coverage=cnt_bs/m)
+```
+
+CLT-based interval has coverage closer to 95%.
+
+## Problem 2
+
+```{r}
+set.seed(123)
+p<-function(x)(2+sin(5*x)+sin(2*x))*exp(-x^2)
+N<-20000;x<-numeric(N);x[1]<-0;acc<-0
+for(i in 2:N){
+  y<-rnorm(1,x[i-1],1);a<-p(y)/p(x[i-1])
+  if(runif(1)<a){x[i]<-y;acc<-acc+1}else x[i]<-x[i-1]
+}
+cat("Acceptance rate:",acc/N,"\n")
+s<-x[2001:N]
+hist(s,breaks=60,freq=FALSE,main="MH samples vs target density",xlab="x",col="lightblue")
+xs<-seq(-4,4,length.out=500);C<-integrate(p,-10,10)$value
+lines(xs,p(xs)/C,col="red",lwd=2)
+plot(s[1:2000],type="l",main="Trace plot",xlab="iteration",ylab="x")
+```
+
+## Problem 3
+
+```{r}
+set.seed(123)
+n<-100;x<-seq(0.01,1,length.out=100);y<-x+rnorm(n,0,0.5)
+nw<-function(xt,yt,xnew,h)sapply(xnew,function(x0){w<-dnorm((xt-x0)/h);sum(w*yt)/sum(w)})
+set.seed(1);folds<-sample(rep(1:5,length.out=n))
+cv<-function(h){
+  err<-0
+  for(k in 1:5){tr<-folds!=k;te<-!tr;pred<-nw(x[tr],y[tr],x[te],h);err<-err+sum((y[te]-pred)^2)}
+  err/n
+}
+cv25<-cv(0.25);cat("CV error at h=0.25 :",cv25,"\n")
+hs<-seq(0.02,0.5,by=0.02);errs<-sapply(hs,cv)
+hopt<-hs[which.min(errs)];cat("Optimal bandwidth :",hopt,"\n")
+par(mfrow=c(1,2))
+plot(x,y,pch=20,main=paste("Kernel fit, h =",hopt))
+lines(x,nw(x,y,x,hopt),col="red",lwd=2)
+plot(hs,errs,type="b",pch=19,xlab="bandwidth",ylab="CV error",main="CV error vs bandwidth")
+abline(v=hopt,col="red",lty=2)
+```
